@@ -271,7 +271,7 @@ function locColor(l){return l.tags&&l.tags.length?(TAGCOL[l.tags[0]]||'#8a8a8a')
 function clearMap(){markers.forEach(m=>map.removeLayer(m));polys.forEach(p=>map.removeLayer(p));markers=[];polys=[]}
 function gmapUrl(l){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.name+' 清迈 Chiang Mai')}`}
 function plotSeq(locs,fit){clearMap();const co=[];locs.forEach(l=>{if(!l.lat)return;const m=L.marker([l.lat,l.lng],{icon:icn(locColor(l),TYPE[l.type]?.e)}).addTo(map);m.bindPopup(`<b>${l.name}</b><br><span style="color:#6B6B6B">${l.time||''} ${l.note||''}</span><br><a href="${gmapUrl(l)}" target="_blank">📍 Google Maps</a>`);markers.push(m);if(l.time&&l.time!=='—')co.push([l.lat,l.lng])});if(co.length>1)polys.push(L.polyline(co,{color:'#0D8F6E',weight:2.4,opacity:.5,dashArray:'5,7'}).addTo(map));if(fit){const all=locs.filter(l=>l.lat).map(l=>[l.lat,l.lng]);if(all.length)map.fitBounds(all,{padding:[40,40],maxZoom:14})}else{map.setView([18.795,98.985],12)}}
-function mountMap(slotSel,locArr,fit){const slot=document.querySelector(slotSel);if(!slot)return;slot.appendChild(mapHost);mapHost.style.display='';ensureMap();const go=()=>{map.invalidateSize();plotSeq(locArr,fit)};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,300)}
+function mountMap(slotSel,locArr,fit){const slot=document.querySelector(slotSel);if(!slot)return;slot.appendChild(mapHost);mapHost.style.display='block';ensureMap();const go=()=>{map.invalidateSize();plotSeq(locArr,fit)};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,300)}
 
 /* ═══════ 卡片 ═══════ */
 function tagsH(l){return(l.tags||[]).map(t=>{const p=PERSON[t];return p?`<span class="tag ${t}">${p.emoji} ${p.label}</span>`:''}).join('')}
@@ -281,7 +281,7 @@ function dayCardHTML(l){
   const uid='c'+(_u++),det=l.hours||l.price||l.tips;
   return `<div class="tl-item"><div class="tl-dot" style="background:${locColor(l)}"></div>
    <div class="card"><div class="card-main" onclick="toggle('${uid}')">
-     <div class="card-top"><span class="time">${l.time||''}</span><span class="tbadge">${TYPE[l.type]?.e||''} ${TYPE[l.type]?.l||''}</span></div>
+     <div class="card-top"><span class="time">${l.time&&l.time!=='—'?l.time:''}</span><span class="tbadge">${TYPE[l.type]?.e||''} ${TYPE[l.type]?.l||''}</span></div>
      <div class="name">${l.name} ${tagsH(l)}</div><div class="note">${l.note||''}</div>
      ${det?`<div class="exp" id="h-${uid}">展开详情 ▾</div>`:''}
    </div><div class="detail" id="${uid}"><div class="detail-in">
