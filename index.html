@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>清迈慢游 · 行程与记账</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="清迈 5 日慢游行程 · 打卡地点 · 记账">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#F5F3F0;--card:#fff;--ink:#1A1A1A;--muted:#6B6B6B;--faint:#9A9A9A;
+  --accent:#0D8F6E;--accent-h:#0A7A5C;--accent-l:rgba(13,143,110,.08);
+  --border:#E0DDD8;--soft:#F0EDE8;--danger:#C0392B;
+  --bk:#C0392B;--pp:#2B7BB5;--shu:#6FAA3D;
+  --shadow:0 2px 12px rgba(0,0,0,.06);
+  --sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);
+  --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","PingFang SC","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--sys);line-height:1.55;-webkit-font-smoothing:antialiased;padding-top:var(--st)}
+a{color:var(--accent);text-decoration:none}
+input,select,textarea,button{font-family:var(--sys)}
+
+#view{max-width:680px;margin:0 auto;padding:14px 16px calc(76px + var(--sb));min-height:100vh}
+.city-switch{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.city-switch::-webkit-scrollbar{display:none}
+.cs{flex-shrink:0;border:1px solid var(--border);background:var(--card);border-radius:980px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.cs.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cs.locked{opacity:.6}
+
+.subbar{display:flex;align-items:center;gap:10px;padding:2px 0 12px}
+.back{border:1px solid var(--border);background:var(--card);width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--ink)}
+.subbar .stitle{font-size:16px;font-weight:700}
+
+.shead{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin:22px 0 11px}
+.shead::before{content:"";width:15px;height:2px;background:var(--accent);border-radius:2px}
+
+.photo{border-radius:16px;background:#c5d4b3;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.photo img{display:block;width:100%;height:auto}
+.photo .cap{position:absolute;left:12px;bottom:11px;background:rgba(255,255,255,.9);font-size:11px;font-weight:600;color:var(--muted);padding:4px 11px;border-radius:980px}
+.otitle{padding:14px 2px 2px}
+.otitle .k{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.16em;text-transform:uppercase}
+.otitle h1{font-size:27px;font-weight:700;margin-top:5px}
+.otitle .d{font-size:13.5px;color:var(--muted);margin-top:4px}
+.intro{font-size:13.5px;color:var(--muted);margin:9px 2px 0;line-height:1.7}
+.intro .zh{color:var(--ink);margin-top:5px}
+
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.fact{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.fact .l{font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.fact .v{font-size:14px;font-weight:600;line-height:1.4}
+.fact .v small{font-weight:400;color:var(--muted);font-size:12px}
+
+.legend{display:flex;gap:7px;flex-wrap:wrap}
+.tchip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:980px;background:var(--card);border:1px solid var(--border);color:var(--muted)}
+.tchip .d{width:8px;height:8px;border-radius:50%}
+
+.daycard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 17px;margin-bottom:11px;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
+.daycard:active{transform:scale(.99)}
+.daycard .dt{font-size:12px;color:var(--accent);font-weight:700}
+.daycard h3{font-size:17px;font-weight:700;margin-top:5px}
+.daycard .sm{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.6}
+.daycard .arr{color:var(--faint);font-size:13px;margin-top:8px}
+
+.mapslot{height:30vh;min-height:210px;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:6px}
+#mapHost{display:none;height:100%;width:100%}
+
+.timeline{position:relative;padding-left:23px;margin-top:8px}
+.timeline::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:11px}
+.tl-dot{position:absolute;left:-21px;top:17px;width:10px;height:10px;border-radius:50%;z-index:2;box-shadow:0 0 0 3px var(--bg)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:13px;box-shadow:var(--shadow);overflow:hidden}
+.card-main{padding:13px 16px 11px;cursor:pointer}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.time{font-size:12px;font-weight:700;color:var(--faint)}
+.tbadge{font-size:11px;font-weight:600;color:var(--muted);background:var(--soft);padding:2px 9px;border-radius:6px}
+.name{font-size:16.5px;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:3px}
+.note{font-size:13.5px;color:var(--muted);line-height:1.6}
+.tag{display:inline-flex;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.tag.BK{background:rgba(192,57,43,.1);color:var(--bk)}
+.tag.PP{background:rgba(43,123,181,.1);color:var(--pp)}
+.tag.shu{background:rgba(111,170,61,.14);color:#4f8a26}
+.exp{font-size:12px;color:var(--accent);font-weight:600;margin-top:7px}
+.detail{max-height:0;overflow:hidden;transition:max-height .3s ease;font-size:12.5px;color:var(--muted)}
+.detail.open{max-height:280px}
+.detail-in{padding:2px 16px 11px;border-top:1px solid var(--border);margin-top:8px}
+.detail .row{margin-top:6px}.detail .row b{color:var(--ink);font-weight:600}
+.detail .tp{margin-top:7px;color:var(--accent)}
+.card-ft{padding:12px 16px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:11px;border-top:1px dashed var(--border)}
+.btn-gmap{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:9px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:600}
+.nlbl{font-size:11px;color:var(--faint);font-weight:600;letter-spacing:.04em;margin-bottom:5px}
+.ta{width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 11px;font-size:13px;resize:vertical;min-height:40px;background:var(--bg);color:var(--ink)}
+.ta:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l)}
+.notebox{width:100%}
+.saved{font-size:11px;color:var(--accent);height:13px}
+
+.pl{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 16px;margin-bottom:11px;box-shadow:var(--shadow)}
+.pl .pn{font-size:16px;font-weight:700;display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.pl .pmeta{font-size:12.5px;color:var(--muted);margin-top:3px}
+.pl .pnote{font-size:12px;color:var(--accent);background:var(--accent-l);padding:5px 9px;border-radius:7px;margin-top:6px;line-height:1.5}
+.thoughts{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:14px 16px;margin-top:14px;box-shadow:var(--shadow)}
+
+.cmcard{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);cursor:pointer}
+.cmcard .cmtop{height:118px;background-size:cover;background-position:center}
+.cmcard .cmin{padding:13px 16px}
+.cmcard h3{font-size:17px;font-weight:700;display:flex;align-items:center;gap:7px}
+.cmcard .cmsm{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.6}
+.epigraph{text-align:center;padding:18px 22px 4px;color:var(--muted);font-style:italic;line-height:1.9;font-size:14.5px}
+.epigraph .epi-em{display:block;margin-top:7px;color:var(--ink)}
+.epi-zh{font-style:normal;font-size:12.5px;color:var(--muted);margin-top:12px;letter-spacing:.02em}
+
+.spend-total{background:linear-gradient(135deg,#0D8F6E,#0A7A5C);color:#fff;border-radius:16px;padding:17px 20px;box-shadow:var(--shadow)}
+.spend-total .l{font-size:12px;opacity:.85;letter-spacing:.06em}
+.spend-total .v{font-size:30px;font-weight:700;margin-top:4px}
+.spend-total .v small{font-size:14px;font-weight:500;opacity:.9}
+.spend-total .sub{font-size:12px;opacity:.85;margin-top:6px}
+.ratebox{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 13px;margin-top:10px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ratebox input{width:64px;border:1px solid var(--border);border-radius:7px;padding:5px 7px;font-size:12.5px;background:var(--bg);color:var(--ink)}
+.sform{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px 14px;margin-top:11px;box-shadow:var(--shadow)}
+.sform .r{display:flex;gap:8px;flex-wrap:wrap}
+.sform select,.sform input{border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:13.5px;background:var(--bg);color:var(--ink)}
+.sform .c-day{width:96px}.sform .c-cat{width:108px}.sform .c-item{flex:1;min-width:130px}.sform .c-amt{width:92px}
+.sform button{width:100%;margin-top:9px;padding:10px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:13.5px;font-weight:600;cursor:pointer}
+.scats{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.scat{font-size:11.5px;background:var(--soft);border:1px solid var(--border);padding:4px 10px;border-radius:980px;color:var(--muted)}
+.scat b{color:var(--ink)}
+.sgroup{margin-top:16px}
+.sgroup .gh{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;padding:3px 0}
+.sgroup .gh .gleft{display:flex;align-items:center;gap:7px}
+.caret{display:inline-block;width:12px;color:var(--faint);font-size:11px}
+.sgroup.folded .srows{display:none}
+.foldrow{display:flex;justify-content:flex-end;margin-top:14px}
+.foldall{border:none;background:none;color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:4px}
+.srow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 14px;margin-top:8px;box-shadow:var(--shadow)}
+.srow .ico{font-size:17px}
+.srow .info{flex:1;min-width:0}
+.srow .it{font-size:14px;font-weight:600}
+.srow .ic{font-size:11.5px;color:var(--faint)}
+.srow .am{font-size:15px;font-weight:700;white-space:nowrap}
+.srow .am small{font-size:11px;color:var(--faint);font-weight:500;display:block;text-align:right}
+.srow .del{border:none;background:none;color:var(--faint);font-size:16px;cursor:pointer;padding:4px}
+.srow .del:active{color:var(--danger)}
+.empty{text-align:center;color:var(--faint);font-size:13px;padding:26px 10px}
+.backup{margin-top:18px;display:flex;gap:8px}
+.backup button{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.footnote{font-size:11.5px;color:var(--faint);line-height:1.7;margin-top:22px;padding:0 4px;text-align:center}
+
+.tabbar{position:fixed;bottom:0;left:0;right:0;height:calc(60px + var(--sb));background:rgba(255,255,255,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;z-index:200;padding-bottom:var(--sb)}
+.tb{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600;cursor:pointer}
+.tb .i{font-size:20px;line-height:1}
+.tb.active{color:var(--accent)}
+
+.leaflet-popup-content-wrapper{border-radius:11px!important;box-shadow:var(--shadow)!important;border:1px solid var(--border)}
+.leaflet-popup-content{font-size:12.5px!important;margin:9px 11px!important;line-height:1.5!important}
+.leaflet-popup-content a{color:var(--accent)!important;font-weight:600}
+.leaflet-control-zoom{border-radius:9px!important;overflow:hidden;box-shadow:var(--shadow)!important;border:1px solid var(--border)!important}
+.leaflet-control-zoom a{background:rgba(255,255,255,.94)!important;color:var(--ink)!important}
+.leaflet-control-attribution{font-size:8px!important;opacity:.4}
+</style>
+</head>
+<body>
+<main id="view"></main>
+<div id="mapHost"><div id="map" style="height:100%;width:100%"></div></div>
+<nav class="tabbar" id="tabbar">
+  <button class="tb active" data-tab="overview"><span class="i">📋</span>总览</button>
+  <button class="tb" data-tab="itinerary"><span class="i">🗓️</span>行程</button>
+  <button class="tb" data-tab="map"><span class="i">🗺️</span>地图</button>
+  <button class="tb" data-tab="spend"><span class="i">💰</span>记账</button>
+</nav>
+
+<script>
+/* ═══════ 币种与汇率（rate = 1 本币兑多少 CNY，参考值，可改） ═══════ */
+const CUR={THB:{sym:'฿',rate:0.205},JPY:{sym:'¥',rate:0.048},KRW:{sym:'₩',rate:0.0052}};
+function getRate(code){const v=parseFloat(localStorage.getItem('rate:'+code));return v?v:CUR[code].rate}
+
+/* ═══════ 地点库（id 唯一；行程与地图共享，备注互通） ═══════ */
+const P={
+ p_rim:{id:'p_rim',name:'The Rim Chiang Mai',type:'hotel',lat:18.78980,lng:98.99180,note:'古城东、近塔佩门的兰纳风酒店，带泳池',hours:'24小时前台',price:'฿2500–4000/房',tips:'预订带阳台房'},
+ p_lookbua:{id:'p_lookbua',name:'Lookbua Thai Food',type:'food',lat:18.78531,lng:98.98219,note:'古城南 Samlan 巷泰餐',hours:'11:00–22:30',price:'฿150–300',tips:'必点铁板鱿鱼/烤鸭/Khao Soi；饭点排队'},
+ p_wmassage:{id:'p_wmassage',name:"Women's Massage Center by Ex-Prisoners",type:'spa',lat:18.79310,lng:98.98500,note:'前女囚公益按摩，仅 walk-in',hours:'10:00–22:00',price:'฿200–500',tips:'不接预订，早上到店排队占位'},
+ p_cmu:{id:'p_cmu',name:'Chiang Mai University',type:'spot',lat:18.80259,lng:98.95156,note:'清迈大学主校区',hours:'白天',price:'免费',tips:'Huay Kaew 校门登记 + 校园电车约฿20'},
+ p_lanna:{id:'p_lanna',name:'Lanna Traditional House Museum',type:'spot',lat:18.79166,lng:98.96169,note:'兰纳百年木屋博物馆（CMU 艺术文化中心）',hours:'周二–日 08:30–16:30（周一闭）',price:'฿100',tips:'人少出片，可与 Ang Kaew 顺路'},
+ p_angkaew:{id:'p_angkaew',name:'Ang Kaew Reservoir 安康水库',type:'spot',lat:18.80729,lng:98.95045,note:'CMU 校内水库，看日落 🌿',hours:'约 06:00–18:00',price:'免费',tips:'17:00 后光影最美；外来游客乘校园电车进入；带驱蚊水'},
+ p_phithi:{id:'p_phithi',name:'phithi 慢食牛肉面',type:'food',lat:18.78283,lng:98.98419,note:'慢食牛肉面 พิถี',hours:'周一–五 09:15–15:00；周六 11:00–15:00',price:'฿80–150',tips:'现做等 20–30 分钟，卖完即收；必点干牛肉面'},
+ p_robert:{id:'p_robert',name:'Robert Bake & Brunch',type:'cafe',tags:['PP'],lat:18.79333,lng:98.98603,note:'网红意式 brunch',hours:'08:00–18:00',price:'฿150–350',tips:'周末上午排队，建议开门即到'},
+ p_haus224:{id:'p_haus224',name:'The Haus 224',type:'cafe',tags:['PP'],lat:18.79350,lng:98.98720,note:'殖民风花园老宅咖啡',hours:'09:00–21:00',price:'฿150–300',tips:'花园座出片，可电话 063-234-3082 订位'},
+ p_fern:{id:'p_fern',name:'Fern Forest Cafe',type:'cafe',lat:18.79380,lng:98.98420,note:'森林花园系咖啡馆 🌿',hours:'08:30–20:30',price:'฿80–250',tips:'早到抢花园位；必点椰奶油派'},
+ p_aoyjai:{id:'p_aoyjai',name:'Aoyjai Kitchen 打抛饭',type:'food',lat:18.78690,lng:98.98470,note:'打抛饭名店（仅 4 桌）',hours:'11:30–18:00（周三休）',price:'฿50–120',tips:'打抛饭+煎蛋是招牌，饭点排队 40 分钟+'},
+ p_magokoro:{id:'p_magokoro',name:'Magokoro 抹茶茶屋',type:'cafe',lat:18.78690,lng:99.00180,note:'日式抹茶茶道',hours:'10:00–18:00',price:'฿120–300',tips:'榻榻米席脱鞋；玉露 set 建议 IG 确认'},
+ p_moojum:{id:'p_moojum',name:'Moo Jum Jae So 猪锅',type:'food',lat:18.80106,lng:98.99841,note:'炭火猪锅 หมูจุ่มเจ้โส',hours:'17:00–24:00',price:'฿100–250',tips:'每盘 19฿ 起自取；5 点开门即到避长队'},
+ p_jj:{id:'p_jj',name:'Jing Jai Market JJ 市集',type:'spot',lat:18.80787,lng:98.99495,note:'JJ Market 周末市集',hours:'周末 09:00–18:00',price:'逛街 / ฿50–200',tips:'清晨 9 点人少，有机农产品+手作，带现金'},
+ p_early:{id:'p_early',name:'Early Owls 荷花池咖啡',type:'cafe',lat:18.79590,lng:98.98570,note:'Suan Chang Puak 公园木屋咖啡',hours:'约 08:00–17:00',price:'฿80–250',tips:'草坪露营椅好拍，建议上午去人少'},
+ p_roast8ry:{id:'p_roast8ry',name:'Roast8ry Coffee Flagship',type:'cafe',tags:['BK'],lat:18.79700,lng:98.96850,note:'拉花世界冠军旗舰',hours:'每日 08:00–17:00',price:'฿70–150',tips:'宁曼 Soi 17，吧台看拉花，下午易满座'},
+ p_joost:{id:'p_joost',name:'Joost 果昔（山竹冰沙）',type:'cafe',lat:18.79647,lng:98.96864,note:'100% 鲜果冰沙',hours:'约 10:00–21:00',price:'฿50–120',tips:'山竹冰沙当季招牌（约 5–9 月）'},
+ p_onenimman:{id:'p_onenimman',name:'One Nimman',type:'spot',lat:18.80023,lng:98.96782,note:'红砖欧式街区',hours:'每日 11:00–22:00',price:'逛街 / ฿200–800',tips:'傍晚灯光最美，周末常有市集'},
+ p_maya:{id:'p_maya',name:'MAYA 购物中心',type:'spot',lat:18.80220,lng:98.96740,note:'宁曼路口地标商场',hours:'每日 11:00–22:00',price:'逛街',tips:'顶楼看日落，负一层超市买伴手礼'},
+ p_retreat:{id:'p_retreat',name:'Retreat Nimman Massage',type:'spa',lat:18.79600,lng:98.96840,note:'宁曼按摩 Spa',hours:'每日 11:00–23:00',price:'฿450–2000',tips:'GoWabi/官网预约有折扣，提前一天约'},
+ p_northgate:{id:'p_northgate',name:'North Gate Jazz 北门爵士',type:'drink',lat:18.79523,lng:98.98717,note:'古城北门爵士吧',hours:'19:30–01:00',price:'฿100–250（酒水）',tips:'先到先得无预订，19:30 前到抢座'},
+ p_tiger:{id:'p_tiger',name:'Tiger Kingdom 虎园',type:'spot',lat:18.91680,lng:98.90420,note:'Mae Rim 虎园，小老虎互动',hours:'每日 09:00–18:00',price:'套餐 ฿620（小老虎）起',tips:'开门即到避团客；小老虎最萌'},
+ p_shooting:{id:'p_shooting',name:'333 Shooting Range 射击场',type:'spot',lat:18.91460,lng:98.95330,note:'Mae Rim 清迈射击场',hours:'每日 09:00–18:00',price:'฿1700 起/30 发',tips:'必须带护照原件；Klook 订套餐更便宜'},
+ p_sticky:{id:'p_sticky',name:'Sticky Waterfall 粘性瀑布',type:'spot',lat:19.59600,lng:98.95100,note:'Bua Tong 粘性瀑布，可攀爬 🌿',hours:'每日 08:00–17:00',price:'免费',tips:'赤脚/溯溪鞋抓地强；带换洗衣物'},
+ p_kaprao:{id:'p_kaprao',name:'Kaprao Nueanuea 长美打抛饭',type:'food',lat:18.79080,lng:99.00450,note:'长美牛肉打抛饭',hours:'每日 11:00–21:00（周三休）',price:'฿50–80',tips:'招牌牛肉打抛+煎蛋'},
+ p_jjpadthai:{id:'p_jjpadthai',name:'JJ Pad Thai 长美炒河粉',type:'food',lat:18.78970,lng:99.00600,note:'长美蛋包河粉',hours:'约 16:00–22:00',price:'฿40–60',tips:'蛋包河粉(ห่อไข่)招牌；傍晚出摊'},
+ p_warorot:{id:'p_warorot',name:'Warorot Market 瓦洛洛',type:'spot',lat:18.78970,lng:98.99240,note:'瓦洛洛本地集市',hours:'约 04:00–18:00',price:'购物 ฿20–100',tips:'只收现金；泰北香料/芒果干/泰丝伴手礼'},
+ p_khaomao:{id:'p_khaomao',name:'Khaomao-Khaofang 丛林餐厅',type:'food',tags:['shu'],lat:18.73890,lng:98.96940,note:'丛林主题餐厅（米其林推荐），椰子蒸海鲜',hours:'晚 17:00–21:30（周三闭）',price:'฿300–500',tips:'建议晚餐去；提前电话 053-838444 订位；近机场'},
+ p_airport:{id:'p_airport',name:'Chiang Mai Airport 清迈机场',type:'trans',lat:18.76667,lng:98.96250,note:'清迈国际机场 CNX',hours:'24小时',price:'—',tips:'国际航班提前 2 小时；从 Khaomao 打车约 15 分钟'},
+ p_cochet:{id:'p_cochet',name:'Cochet de Nimman',type:'cafe',lat:18.79946,lng:98.96995,note:'森林系民宿咖啡，院里有鸡群',hours:'约 08:00–22:00',price:'฿70–150',tips:'适合拍照发呆'},
+ p_ristr8to:{id:'p_ristr8to',name:'Ristr8to Original',type:'cafe',lat:18.79910,lng:98.96723,note:'拉花冠军 Arnon 名店',hours:'07:30–17:30',price:'฿70–160',tips:'必点拉花拿铁+松饼；午后易排队'},
+ p_arte:{id:'p_arte',name:'Cafe Arte 艺术咖啡',type:'cafe',lat:18.81048,lng:98.96703,note:'Jed Yod 老别墅艺术咖啡',hours:'09:00–17:00（周四休）',price:'฿80–180',tips:'空调区+花园座'},
+ p_kuarung:{id:'p_kuarung',name:'Kuarung 宁曼泰菜',type:'food',lat:18.79842,lng:98.97060,note:'人气泰式炒锅饭馆',hours:'12:00–15:00 / 18:00–22:00（周日休）',price:'฿60–150',tips:'必点咖喱粉炒蟹'},
+ p_bluenoodle:{id:'p_bluenoodle',name:'Blue Noodle 红烧牛肉面',type:'food',lat:18.78751,lng:98.99024,note:'古城东红烧牛肉米粉老店',hours:'09:00–20:00',price:'฿50–120',tips:'有中文菜单，饭点排长队'},
+ p_cmukaprao:{id:'p_cmukaprao',name:'CMU 后门打抛 หลังมช',type:'food',lat:18.79232,lng:98.95706,note:'CMU 后门推车牛肉打抛',hours:'17:00–22:00（每月 25 号休）',price:'฿55–100',tips:'傍晚开卖卖完即止，加鸭蛋更香'}
+};
+
+/* ═══════ 城市 ═══════ */
+const CITIES={
+ chiangmai:{
+  name:'清迈',en:'Chiang Mai',emoji:'🌿',code:'THB',dates:'2026.09.25 — 09.30',
+  photo:'CMU.jpg',
+  intro:{en:'where mist still hangs on the mountain, and lanterns drift above the old walls.',zh:'慢一点，把五天过成一段留白。'},
+  facts:[['住宿','The Rim Chiang Mai','古城·近塔佩门'],['航班','9/25 抵 · 9/30 00:30','红眼'],['出行','Grab · Bolt','D4 包车'],['支付','现金 ฿ 为主','部分 Alipay']],
+  days:[
+   {id:'d1',label:'D1',date:'9/25',wd:'周五',title:'古城慢启动',sm:'落地慢慢醒，下午逛清迈大学，傍晚去安康水库看日落。',locations:[
+     {...P.p_lookbua,time:'11:00'},{...P.p_wmassage,time:'13:30'},{...P.p_cmu,time:'15:00'},{...P.p_lanna,time:'15:40'},{...P.p_angkaew,time:'17:30'},
+     {...P.p_phithi,time:'—'}]},
+   {id:'d2',label:'D2',date:'9/26',wd:'周六',title:'古城咖啡漫游',sm:'古城里咖啡馆一间间坐过去，慢慢喝。',locations:[
+     {...P.p_robert,time:'10:30'},{...P.p_haus224,time:'13:00'},{...P.p_fern,time:'14:30'},{...P.p_aoyjai,time:'16:30'},
+     {...P.p_magokoro,time:'—'},{...P.p_moojum,time:'—'}]},
+   {id:'d3',label:'D3',date:'9/27',wd:'周日',title:'市集与宁曼',sm:'上午 JJ 周末市集，下午宁曼路咖啡与街区。',locations:[
+     {...P.p_jj,time:'10:00'},{...P.p_early,time:'13:00'},{...P.p_roast8ry,time:'14:30'},{...P.p_joost,time:'15:30'},{...P.p_onenimman,time:'16:30'},{...P.p_retreat,time:'17:30'},
+     {...P.p_maya,time:'—'},{...P.p_northgate,time:'—'}]},
+   {id:'d4',label:'D4',date:'9/28',wd:'周一',title:'包车自然线',sm:'包车北上：虎园、射击、粘性瀑布，自然一日。',locations:[
+     {...P.p_tiger,time:'10:00'},{...P.p_shooting,time:'12:00'},{...P.p_sticky,time:'14:30'}]},
+   {id:'d5',label:'D5',date:'9/29',wd:'周二',title:'长美慢日 · 丛林晚餐',sm:'长美 brunch + 瓦洛洛，傍晚丛林餐厅收尾，夜奔机场。',locations:[
+     {...P.p_kaprao,time:'11:00'},{...P.p_warorot,time:'13:30'},{...P.p_khaomao,time:'18:00'},{...P.p_airport,time:'21:00'},
+     {...P.p_jjpadthai,time:'—'},{...P.p_cochet,time:'—'},{...P.p_ristr8to,time:'—'},{...P.p_arte,time:'—'},{...P.p_kuarung,time:'—'}]},
+  ],
+  places:[...Object.values(P)]
+ },
+ osaka:{name:'大阪',en:'Osaka',emoji:'🎏',code:'JPY',dates:'待定',intro:{zh:'下一站，待规划。'},placeholder:true,facts:[],days:[],places:[]},
+ kyoto:{name:'京都',en:'Kyoto',emoji:'⛩️',code:'JPY',dates:'待定',intro:{zh:'待规划。'},placeholder:true,facts:[],days:[],places:[]},
+ kobe:{name:'神户',en:'Kobe',emoji:'🐂',code:'JPY',dates:'待定',intro:{zh:'待规划。'},placeholder:true,facts:[],days:[],places:[]},
+ seoul:{name:'首尔',en:'Seoul',emoji:'🌸',code:'KRW',dates:'待定',intro:{zh:'待规划。'},placeholder:true,facts:[],days:[],places:[]},
+};
+const PERSON={BK:{label:'BK',emoji:'🔴'},PP:{label:'PP',emoji:'🔵'},shu:{label:'舒华',emoji:'🟢'}};
+const TAGCOL={'BK':'#C0392B','PP':'#2B7BB5','shu':'#6FAA3D'};
+const TYPE={food:{l:'餐',e:'🍽️',c:'#D4930A'},cafe:{l:'咖啡',e:'☕',c:'#8a5a3a'},spot:{l:'景',e:'🌿',c:'#0D8F6E'},spa:{l:'按摩',e:'💆',c:'#7a4f8a'},drink:{l:'酒',e:'🎷',c:'#7a4f8a'},trans:{l:'交通',e:'✈️',c:'#8a8a8a'},hotel:{l:'酒店',e:'🏨',c:'#a07a2a'}};
+const CATS=[['餐饮','🍜'],['交通','🚗'],['门票','🎫'],['购物','🛍️'],['住宿','🏨'],['按摩','💆'],['其他','✏️']];
+
+/* ═══════ 存储 ═══════ */
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch{return d}},set(k,v){localStorage.setItem(k,JSON.stringify(v))}};
+const state={city:'chiangmai',tab:'overview',sub:null};
+function cid(){return state.city}
+function nk(id){return 'note:'+cid()+':'+id}
+function getNote(id){return localStorage.getItem(nk(id))||''}
+function getThought(city){return localStorage.getItem('thought:'+city)||''}
+function getSpend(){return LS.get('spend:'+cid(),[])}
+function setSpend(a){LS.set('spend:'+cid(),a)}
+function folded(){return LS.get('spendfold:'+cid(),[])}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function grandCNY(){let g=0;for(const k in CITIES){const c=CITIES[k];const t=LS.get('spend:'+k,[]).reduce((s,x)=>s+(+x.amount||0),0);g+=t*getRate(c.code)}return g}
+
+/* ═══════ 地图 ═══════ */
+let map=null;const mapHost=document.getElementById('mapHost');let markers=[],polys=[];
+function ensureMap(){if(map)return;map=L.map(mapHost.querySelector('#map'),{center:[18.79,98.98],zoom:13,zoomControl:false,attributionControl:true});L.control.zoom({position:'topright'}).addTo(map);L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OSM, © CARTO'}).addTo(map)}
+function icn(c,e){return L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:11px">${e||''}</span></div>`,iconSize:[24,24],iconAnchor:[12,24],popupAnchor:[0,-24]})}
+function locColor(l){return l.tags&&l.tags.length?(TAGCOL[l.tags[0]]||'#8a8a8a'):(TYPE[l.type]?TYPE[l.type].c:'#8a8a8a')}
+function clearMap(){markers.forEach(m=>map.removeLayer(m));polys.forEach(p=>map.removeLayer(p));markers=[];polys=[]}
+function gmapUrl(l){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.name+' 清迈 Chiang Mai')}`}
+function plotSeq(locs,fit){clearMap();const co=[];locs.forEach(l=>{if(!l.lat)return;const m=L.marker([l.lat,l.lng],{icon:icn(locColor(l),TYPE[l.type]?.e)}).addTo(map);m.bindPopup(`<b>${l.name}</b><br><span style="color:#6B6B6B">${l.time||''} ${l.note||''}</span><br><a href="${gmapUrl(l)}" target="_blank">📍 Google Maps</a>`);markers.push(m);if(l.time&&l.time!=='—')co.push([l.lat,l.lng])});if(co.length>1)polys.push(L.polyline(co,{color:'#0D8F6E',weight:2.4,opacity:.5,dashArray:'5,7'}).addTo(map));if(fit){const all=locs.filter(l=>l.lat).map(l=>[l.lat,l.lng]);if(all.length)map.fitBounds(all,{padding:[40,40],maxZoom:14})}else{map.setView([18.795,98.985],12)}}
+function mountMap(slotSel,locArr,fit){const slot=document.querySelector(slotSel);if(!slot)return;slot.appendChild(mapHost);mapHost.style.display='';ensureMap();const go=()=>{map.invalidateSize();plotSeq(locArr,fit)};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,300)}
+
+/* ═══════ 卡片 ═══════ */
+function tagsH(l){return(l.tags||[]).map(t=>{const p=PERSON[t];return p?`<span class="tag ${t}">${p.emoji} ${p.label}</span>`:''}).join('')}
+function noteBox(id){return `<div class="notebox"><div class="nlbl">📝 我的备注</div><textarea class="ta" data-note="${id}" placeholder="写下你想记的…">${esc(getNote(id))}</textarea><div class="saved" data-sv="${id}"></div></div>`}
+let _u=0;
+function dayCardHTML(l){
+  const uid='c'+(_u++),det=l.hours||l.price||l.tips;
+  return `<div class="tl-item"><div class="tl-dot" style="background:${locColor(l)}"></div>
+   <div class="card"><div class="card-main" onclick="toggle('${uid}')">
+     <div class="card-top"><span class="time">${l.time||''}</span><span class="tbadge">${TYPE[l.type]?.e||''} ${TYPE[l.type]?.l||''}</span></div>
+     <div class="name">${l.name} ${tagsH(l)}</div><div class="note">${l.note||''}</div>
+     ${det?`<div class="exp" id="h-${uid}">展开详情 ▾</div>`:''}
+   </div><div class="detail" id="${uid}"><div class="detail-in">
+     ${l.hours?`<div class="row"><b>营业</b>　${l.hours}</div>`:''}
+     ${l.price?`<div class="row"><b>人均/门票</b>　${l.price}</div>`:''}
+     ${l.tips?`<div class="tp">💡 ${l.tips}</div>`:''}
+   </div></div>
+   <div class="card-ft"><a class="btn-gmap" href="${gmapUrl(l)}" target="_blank" rel="noopener">📍 Google Maps</a>${noteBox(l.id)}</div>
+   </div></div>`;
+}
+function toggle(uid){const d=document.getElementById(uid),h=document.getElementById('h-'+uid);if(!d)return;const o=d.classList.toggle('open');if(h)h.innerHTML=o?'收起 ▴':'展开详情 ▾'}
+window.toggle=toggle;
+
+/* ═══════ 渲染 ═══════ */
+const view=document.getElementById('view');
+function render(){
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));
+  if(state.tab==='overview')view.innerHTML=renderOverview();
+  else if(state.tab==='itinerary')view.innerHTML=state.sub?renderItinDay():renderItinList();
+  else if(state.tab==='map')view.innerHTML=state.sub?renderMapCity():renderMapCities();
+  else if(state.tab==='spend'){view.innerHTML=renderSpend();wireSpend()}
+  window.scrollTo({top:0});
+  if(state.tab==='itinerary'&&state.sub){const d=CITIES[cid()].days.find(x=>x.id===state.sub);mountMap('#mmap',d.locations,true)}
+  if(state.tab==='map'&&state.sub){mountMap('#cmap',CITIES[state.sub].places,false)}
+}
+function citySwitch(){return `<div class="city-switch">${Object.entries(CITIES).map(([k,c])=>`<button class="cs ${k===cid()?'active':''} ${c.placeholder?'locked':''}" data-city="${k}">${c.emoji} ${c.name}</button>`).join('')}</div>`}
+function renderOverview(){
+  const c=CITIES[cid()];
+  if(c.placeholder)return citySwitch()+`<div class="empty">「${c.name}」还在规划中 📝<br>结构已就绪，随时可加入行程与地点。</div>`;
+  const cnt={BK:0,PP:0,shu:0};c.days.forEach(d=>d.locations.forEach(l=>(l.tags||[]).forEach(t=>cnt[t]++)));
+  return citySwitch()+
+  `<div class="photo"><img src="${c.photo}" alt="${c.name}" onerror="this.style.display='none'"><div class="cap">${c.emoji} ${c.en}</div></div>
+  <div class="otitle"><div class="k">${c.en} · Slow Travel</div><h1>${c.name} · 慢游五日</h1><div class="d">${c.dates}</div></div>
+  <div class="intro"><div>${c.intro.en}</div><div class="zh">${c.intro.zh}</div></div>
+  <div class="shead">行程速览</div>
+  <div class="facts">${c.facts.map(f=>`<div class="fact"><div class="l">${f[0]}</div><div class="v">${f[1]}<br><small>${f[2]}</small></div></div>`).join('')}</div>
+  <div class="shead">每日概览</div>
+  ${c.days.map(d=>`<div class="daycard" data-go="itin:${d.id}"><div class="dt">${c.name} · ${d.label} ${d.date} ${d.wd}</div><h3>${d.title}</h3><div class="sm">${d.sm}</div><div class="arr">查看当日行程 ›</div></div>`).join('')}
+  <div class="shead">打卡标签</div>
+  <div class="legend">
+    <span class="tchip"><span class="d" style="background:var(--bk)"></span>🔴 BK · ${cnt.BK}</span>
+    <span class="tchip"><span class="d" style="background:var(--pp)"></span>🔵 PP · ${cnt.PP}</span>
+    <span class="tchip"><span class="d" style="background:var(--shu)"></span>🟢 舒华 · ${cnt.shu}</span>
+  </div>
+  <div class="footnote">行程仅供参考，按实际体力/天气灵活调整。<br>📍 Google Maps 按钮按店名搜索，可准确到达；个别小店地图标记为估算，出发前可复核。</div>`;
+}
+function renderItinList(){
+  const c=CITIES[cid()];
+  if(c.placeholder)return citySwitch()+`<div class="empty">${c.name} 行程待规划</div>`;
+  return citySwitch()+`<div class="shead">每日行程 · ${c.name}</div>`+
+  c.days.map(d=>`<div class="daycard" data-go="itin:${d.id}"><div class="dt">${c.name} · ${d.label} ${d.date} ${d.wd}</div><h3>${d.title}</h3><div class="sm">${d.sm}　<span style="color:var(--faint)">· ${d.locations.filter(x=>x.time&&x.time!=='—').length} 个主要地点</span></div><div class="arr">查看详情 ›</div></div>`).join('');
+}
+function renderItinDay(){
+  const c=CITIES[cid()],d=c.days.find(x=>x.id===state.sub);
+  const main=d.locations.filter(l=>l.time&&l.time!=='—'),alt=d.locations.filter(l=>!l.time||l.time==='—');
+  return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.name} · ${d.label} ${d.date} ${d.wd} · ${d.title}</div></div>
+  <div class="mapslot" id="mmap"></div>
+  <div class="timeline">${main.map(dayCardHTML).join('')}</div>
+  ${alt.length?`<div class="shead">备选</div><div class="timeline">${alt.map(dayCardHTML).join('')}</div>`:''}`;
+}
+function renderMapCities(){
+  return `<div class="epigraph"><p>We don't collect cities —<br>we collect the selves we found in them:<br>the slow morning, the wrong turn that became the best coffee,<br>the sunset we almost missed.<span class="epi-em">A map is only the trail of who we were becoming.</span></p><div class="epi-zh">一张地图，记下的是我们一路成为的样子。</div></div>
+  <div class="shead">我的收藏 · 按城市</div>`+
+  Object.entries(CITIES).map(([k,c])=>`<div class="cmcard" data-go="mapc:${k}"><div class="cmtop" style="background:${c.placeholder?'linear-gradient(135deg,#e0d8c8,#efe9da)':`url('${c.photo}') center/cover`}"></div><div class="cmin"><h3>${c.emoji} ${c.name}地图</h3><div class="cmsm">${c.placeholder?'待规划，点进可开始添加':'共 '+c.places.length+' 个收藏地点 · 点查看地图与备注'}</div></div></div>`).join('');
+}
+function renderMapCity(){
+  const c=CITIES[state.sub],city=state.sub;
+  if(c.placeholder)return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name}地图</div></div><div class="empty">${c.name} 待规划，暂无收藏地点</div>`;
+  return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name} · 收藏地点</div></div>
+  <div class="mapslot" id="cmap"></div>
+  <div style="font-size:12.5px;color:var(--muted);margin:4px 2px 10px">${c.name}共 ${c.places.length} 个收藏 · 点地点开 Google Maps。地点备注请在「行程」填写，这里只读显示。</div>
+  ${c.places.map(p=>{const n=getNote(p.id);return `<div class="pl"><div class="pn">${TYPE[p.type]?.e||''} ${p.name} ${tagsH(p)}</div><div class="pmeta">${p.note||''}${p.hours?' · '+p.hours:''}${p.price?' · '+p.price:''}</div>${n?`<div class="pnote">📝 ${esc(n)}</div>`:''}<div style="margin-top:10px"><a class="btn-gmap" href="${gmapUrl(p)}" target="_blank" rel="noopener">📍 Google Maps</a></div></div>`}).join('')}
+  <div class="thoughts"><div class="nlbl">📝 关于${c.name}的想法 / 备忘</div><textarea class="ta" data-thought="${city}" placeholder="整体感受、待办、下次想去的…">${esc(getThought(city))}</textarea><div class="saved" data-tsv="${city}"></div></div>`;
+}
+function renderSpend(){
+  const c=CITIES[cid()],code=c.code,C=CUR[code],rate=getRate(code);
+  const list=getSpend();
+  const total=list.reduce((s,x)=>s+(+x.amount||0),0);
+  const cnyV=total*rate;
+  const bycat={};list.forEach(x=>bycat[x.cat]=(bycat[x.cat]||0)+(+x.amount||0));
+  const days=c.days;const dayOpts=days.length?days.map(d=>`<option value="${d.label}">${d.label} ${d.date}`).join(''):'<option value="通用">通用</option>';
+  const order=['D1','D2','D3','D4','D5','通用'];const groups={};list.forEach(x=>{(groups[x.day]=groups[x.day]||[]).push(x)});
+  const F=folded();
+  const gh=order.filter(d=>groups[d]).map(d=>{const sub=groups[d].reduce((s,x)=>s+(+x.amount||0),0);const isF=F.includes(d);return `<div class="sgroup ${isF?'folded':''}"><div class="gh" data-fold="${d}"><span class="gleft"><span class="caret">${isF?'▸':'▾'}</span><span>${d}</span></span><span>${C.sym}${sub} <small style="color:var(--faint)">≈¥${(sub*rate).toFixed(1)}</small></span></div><div class="srows">${groups[d].map(x=>`<div class="srow"><span class="ico">${x.icon||'✏️'}</span><div class="info"><div class="it">${x.item}</div><div class="ic">${x.day} · ${x.cat}</div></div><div class="am">${C.sym}${x.amount}<small>≈¥${(x.amount*rate).toFixed(1)}</small></div><button class="del" data-del="${x.id}">✕</button></div>`).join('')}</div></div>`}).join('');
+  const dayCount=order.filter(d=>groups[d]).length;
+  const foldrow=list.length?`<div class="foldrow"><button class="foldall" id="foldall">${F.length>=dayCount&&dayCount>0?'展开全部':'折叠全部'}</button></div>`:'';
+  return citySwitch()+
+  `<div class="spend-total"><div class="l">${c.emoji} ${c.name} · 总花费（${code}）</div><div class="v">${C.sym}${total} <small>≈ ¥${cnyV.toFixed(1)} CNY</small></div><div class="sub">全部城市合计 ≈ ¥${grandCNY().toFixed(1)} CNY · 共 ${list.length} 笔</div></div>
+  <div class="ratebox">参考汇率：1 ${C.sym}（${code}）= <input id="s-rate" inputmode="decimal" value="${rate}"> ¥（CNY，可改）</div>
+  <div class="scats">${CATS.map(cc=>bycat[cc[0]]?`<span class="scat">${cc[1]} ${cc[0]} <b>${C.sym}${bycat[cc[0]]}</b></span>`:'').join('')}</div>
+  <div class="sform">
+    <div class="r">
+      <select class="c-day" id="s-day">${dayOpts}</select>
+      <select class="c-cat" id="s-cat">${CATS.map(cc=>`<option value="${cc[0]}">${cc[1]} ${cc[0]}`).join('')}</select>
+      <input class="c-item" id="s-item" placeholder="项目（如 打抛饭）">
+      <input class="c-amt" id="s-amt" type="number" inputmode="decimal" placeholder="金额(${C.sym})">
+    </div>
+    <button id="s-add">＋ 添加一笔</button>
+  </div>
+  ${list.length?'':`<div class="empty">还没有记录，添加第一笔吧 ✍️</div>`}
+  ${foldrow}
+  ${gh}
+  <div class="backup"><button id="bk-export">⬇️ 导出备份</button><button id="bk-import">⬆️ 导入备份</button></div>
+  <input type="file" id="bk-file" accept="application/json" style="display:none">`;
+}
+function wireSpend(){
+  document.getElementById('s-add').onclick=()=>{
+    const day=document.getElementById('s-day').value,cat=document.getElementById('s-cat').value,
+      item=document.getElementById('s-item').value.trim(),amt=document.getElementById('s-amt').value;
+    if(!item||!amt){alert('请填项目和金额');return}
+    const icon=(CATS.find(c=>c[0]===cat)||['','✏️'])[1];
+    const a=getSpend();a.push({id:'x'+Date.now(),day,cat,item,amount:+amt,icon});setSpend(a);render();
+  };
+  document.getElementById('s-rate').onchange=function(){const v=parseFloat(this.value);if(v>0){localStorage.setItem('rate:'+CITIES[cid()].code,v);render()}};
+  const fa=document.getElementById('foldall');if(fa)fa.onclick=()=>{const days=[...document.querySelectorAll('[data-fold]')].map(e=>e.dataset.day);LS.set('spendfold:'+cid(),(folded().length>=days.length&&days.length)?[]:days);render()};
+  document.getElementById('bk-export').onclick=exportData;
+  document.getElementById('bk-import').onclick=()=>document.getElementById('bk-file').click();
+  document.getElementById('bk-file').onchange=importData;
+}
+function exportData(){
+  const data={};Object.keys(localStorage).filter(k=>k.startsWith('note:')||k.startsWith('spend:')||k.startsWith('rate:')||k.startsWith('thought:')).forEach(k=>data[k]=localStorage.getItem(k));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='trip-backup.json';a.click();
+}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);Object.entries(d).forEach(([k,v])=>localStorage.setItem(k,v));alert('导入成功 ✓');render()}catch{alert('文件格式不对')}};r.readAsText(f)}
+
+/* ═══════ 事件 ═══════ */
+document.getElementById('tabbar').addEventListener('click',e=>{const b=e.target.closest('.tb');if(!b)return;state.tab=b.dataset.tab;state.sub=null;render()});
+view.addEventListener('click',e=>{
+  const sw=e.target.closest('.cs');if(sw){state.city=sw.dataset.city;state.sub=null;render();return}
+  const go=e.target.closest('[data-go]');if(go){const[v,a]=go.dataset.go.split(':');if(v==='itin'){state.tab='itinerary';state.sub=a;render();return}if(v==='mapc'){state.tab='map';state.sub=a;render();return}}
+  if(e.target.closest('[data-back]')){state.sub=null;render();return}
+  const fh=e.target.closest('[data-fold]');if(fh){const d=fh.dataset.fold;const F=folded();const i=F.indexOf(d);if(i>=0)F.splice(i,1);else F.push(d);LS.set('spendfold:'+cid(),F);render();return}
+  const del=e.target.closest('[data-del]');if(del){setSpend(getSpend().filter(x=>x.id!==del.dataset.del));render();return}
+});
+view.addEventListener('input',e=>{
+  const th=e.target.closest('[data-thought]');
+  if(th){localStorage.setItem('thought:'+th.dataset.thought,th.value);const sv=document.querySelector(`[data-tsv="${th.dataset.thought}"]`);if(sv)sv.textContent='已保存 ✓';clearTimeout(th._t);th._t=setTimeout(()=>{if(sv)sv.textContent=''},1200);return}
+  const ta=e.target.closest('[data-note]');if(!ta)return;
+  localStorage.setItem(nk(ta.dataset.note),ta.value);
+  const sv=document.querySelector(`[data-sv="${ta.dataset.note}"]`);if(sv)sv.textContent='已保存 ✓';
+  clearTimeout(ta._t);ta._t=setTimeout(()=>{if(sv)sv.textContent=''},1200);
+});
+render();
+</script>
+</body>
+</html>
