@@ -63,6 +63,7 @@ input,select,textarea,button{font-family:var(--sys)}
 .daycard .dt{font-size:12px;color:var(--accent);font-weight:700}
 .daycard h3{font-size:17px;font-weight:700;margin-top:5px}
 .daycard .sm{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.6}
+.daycard .dmeta{font-size:12px;color:var(--faint);margin-top:7px}
 .daycard .arr{color:var(--faint);font-size:13px;margin-top:8px}
 
 .mapslot{height:30vh;min-height:210px;border-radius:14px;border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);margin-bottom:6px}
@@ -266,12 +267,12 @@ function grandCNY(){let g=0;for(const k in CITIES){const c=CITIES[k];const t=LS.
 /* ═══════ 地图 ═══════ */
 let map=null;const mapHost=document.getElementById('mapHost');let markers=[],polys=[];
 function ensureMap(){if(map)return;map=L.map(mapHost.querySelector('#map'),{center:[18.79,98.98],zoom:13,zoomControl:false,attributionControl:true});L.control.zoom({position:'topright'}).addTo(map);L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OSM, © CARTO'}).addTo(map)}
-function icn(c,e){return L.divIcon({className:'',html:`<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:11px">${e||''}</span></div>`,iconSize:[24,24],iconAnchor:[12,24],popupAnchor:[0,-24]})}
+function icn(c,e,num){const inner=num?`<b style="font-size:12px">${num}</b>`:`<span style="font-size:11px">${e||''}</span>`;return L.divIcon({className:'',html:`<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg)">${inner}</span></div>`,iconSize:[26,26],iconAnchor:[13,26],popupAnchor:[0,-24]})}
 function locColor(l){return l.tags&&l.tags.length?(TAGCOL[l.tags[0]]||'#8a8a8a'):(TYPE[l.type]?TYPE[l.type].c:'#8a8a8a')}
 function clearMap(){markers.forEach(m=>map.removeLayer(m));polys.forEach(p=>map.removeLayer(p));markers=[];polys=[]}
 function gmapUrl(l){return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.name+' 清迈 Chiang Mai')}`}
-function plotSeq(locs,fit){clearMap();const co=[];locs.forEach(l=>{if(!l.lat)return;const m=L.marker([l.lat,l.lng],{icon:icn(locColor(l),TYPE[l.type]?.e)}).addTo(map);m.bindPopup(`<b>${l.name}</b><br><span style="color:#6B6B6B">${l.time||''} ${l.note||''}</span><br><a href="${gmapUrl(l)}" target="_blank">📍 Google Maps</a>`);markers.push(m);if(l.time&&l.time!=='—')co.push([l.lat,l.lng])});if(co.length>1)polys.push(L.polyline(co,{color:'#0D8F6E',weight:2.4,opacity:.5,dashArray:'5,7'}).addTo(map));if(fit){const all=locs.filter(l=>l.lat).map(l=>[l.lat,l.lng]);if(all.length)map.fitBounds(all,{padding:[40,40],maxZoom:14})}else{map.setView([18.795,98.985],12)}}
-function mountMap(slotSel,locArr,fit){const slot=document.querySelector(slotSel);if(!slot)return;slot.appendChild(mapHost);mapHost.style.display='block';ensureMap();const go=()=>{map.invalidateSize();plotSeq(locArr,fit)};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,300)}
+function plotSeq(locs,fit,numbered){clearMap();const co=[];let n=0;locs.forEach(l=>{if(!l.lat)return;const main=l.time&&l.time!=='—';if(main)n++;const m=L.marker([l.lat,l.lng],{icon:icn(locColor(l),TYPE[l.type]?.e,numbered&&main?n:null)}).addTo(map);m.bindPopup(`<b>${l.name}</b><br><span style="color:#6B6B6B">${numbered&&main?'第'+n+'站 · ':''}${l.note||''}</span><br><a href="${gmapUrl(l)}" target="_blank">📍 Google Maps</a>`);markers.push(m);if(main)co.push([l.lat,l.lng])});if(co.length>1)polys.push(L.polyline(co,{color:'#0D8F6E',weight:2.4,opacity:.5,dashArray:'5,7'}).addTo(map));if(fit){const all=locs.filter(l=>l.lat).map(l=>[l.lat,l.lng]);if(all.length)map.fitBounds(all,{padding:[40,40],maxZoom:14})}else{map.setView([18.795,98.985],12)}}
+function mountMap(slotSel,locArr,fit,numbered){const slot=document.querySelector(slotSel);if(!slot)return;slot.appendChild(mapHost);mapHost.style.display='block';ensureMap();const go=()=>{map.invalidateSize();plotSeq(locArr,fit,numbered)};requestAnimationFrame(()=>requestAnimationFrame(go));setTimeout(go,300)}
 
 /* ═══════ 卡片 ═══════ */
 function tagsH(l){return(l.tags||[]).map(t=>{const p=PERSON[t];return p?`<span class="tag ${t}">${p.emoji} ${p.label}</span>`:''}).join('')}
@@ -304,8 +305,8 @@ function render(){
   else if(state.tab==='map')view.innerHTML=state.sub?renderMapCity():renderMapCities();
   else if(state.tab==='spend'){view.innerHTML=renderSpend();wireSpend()}
   window.scrollTo({top:0});
-  if(state.tab==='itinerary'&&state.sub){const d=CITIES[cid()].days.find(x=>x.id===state.sub);mountMap('#mmap',d.locations,true)}
-  if(state.tab==='map'&&state.sub){mountMap('#cmap',CITIES[state.sub].places,false)}
+  if(state.tab==='itinerary'&&state.sub){const d=CITIES[cid()].days.find(x=>x.id===state.sub);mountMap('#mmap',d.locations,true,true)}
+  if(state.tab==='map'&&state.sub){mountMap('#cmap',CITIES[state.sub].places,false,false)}
 }
 function citySwitch(){return `<div class="city-switch">${Object.entries(CITIES).map(([k,c])=>`<button class="cs ${k===cid()?'active':''} ${c.placeholder?'locked':''}" data-city="${k}">${c.emoji} ${c.name}</button>`).join('')}</div>`}
 function renderOverview(){
@@ -332,7 +333,7 @@ function renderItinList(){
   const c=CITIES[cid()];
   if(c.placeholder)return citySwitch()+`<div class="empty">${c.name} 行程待规划</div>`;
   return citySwitch()+`<div class="shead">每日行程 · ${c.name}</div>`+
-  c.days.map(d=>`<div class="daycard" data-go="itin:${d.id}"><div class="dt">${c.name} · ${d.label} ${d.date} ${d.wd}</div><h3>${d.title}</h3><div class="sm">${d.sm}　<span style="color:var(--faint)">· ${d.locations.filter(x=>x.time&&x.time!=='—').length} 个主要地点</span></div><div class="arr">查看详情 ›</div></div>`).join('');
+  c.days.map(d=>{const main=d.locations.filter(x=>x.time&&x.time!=='—').length;const alt=d.locations.length-main;return `<div class="daycard" data-go="itin:${d.id}"><div class="dt">${c.name} · ${d.label} ${d.date} ${d.wd}</div><h3>${d.title}</h3><div class="sm">${d.sm}</div><div class="dmeta">📍 ${main} 个主要地点${alt?`　·　+${alt} 个备选`:''}</div><div class="arr">查看详情 ›</div></div>`}).join('');
 }
 function renderItinDay(){
   const c=CITIES[cid()],d=c.days.find(x=>x.id===state.sub);
@@ -347,13 +348,18 @@ function renderMapCities(){
   <div class="shead">我的收藏 · 按城市</div>`+
   Object.entries(CITIES).map(([k,c])=>`<div class="cmcard" data-go="mapc:${k}"><div class="cmtop" style="background:${c.placeholder?'linear-gradient(135deg,#e0d8c8,#efe9da)':`url('${c.photo}') center/cover`}"></div><div class="cmin"><h3>${c.emoji} ${c.name}地图</h3><div class="cmsm">${c.placeholder?'待规划，点进可开始添加':'共 '+c.places.length+' 个收藏地点 · 点查看地图与备注'}</div></div></div>`).join('');
 }
+function placeCardHTML(p){const n=getNote(p.id);return `<div class="pl"><div class="pn">${TYPE[p.type]?.e||''} ${p.name} ${tagsH(p)}</div><div class="pmeta">${p.note||''}${p.hours?' · '+p.hours:''}${p.price?' · '+p.price:''}</div>${n?`<div class="pnote">📝 ${esc(n)}</div>`:''}<div style="margin-top:10px"><a class="btn-gmap" href="${gmapUrl(p)}" target="_blank" rel="noopener">📍 Google Maps</a></div></div>`}
 function renderMapCity(){
   const c=CITIES[state.sub],city=state.sub;
   if(c.placeholder)return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name}地图</div></div><div class="empty">${c.name} 待规划，暂无收藏地点</div>`;
+  const folded=LS.get('mapfold:'+city,false);
+  const shown=folded?c.places.slice(0,1):c.places;
   return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name} · 收藏地点</div></div>
   <div class="mapslot" id="cmap"></div>
-  <div style="font-size:12.5px;color:var(--muted);margin:4px 2px 10px">${c.name}共 ${c.places.length} 个收藏 · 点地点开 Google Maps。地点备注请在「行程」填写，这里只读显示。</div>
-  ${c.places.map(p=>{const n=getNote(p.id);return `<div class="pl"><div class="pn">${TYPE[p.type]?.e||''} ${p.name} ${tagsH(p)}</div><div class="pmeta">${p.note||''}${p.hours?' · '+p.hours:''}${p.price?' · '+p.price:''}</div>${n?`<div class="pnote">📝 ${esc(n)}</div>`:''}<div style="margin-top:10px"><a class="btn-gmap" href="${gmapUrl(p)}" target="_blank" rel="noopener">📍 Google Maps</a></div></div>`}).join('')}
+  <div style="font-size:12.5px;color:var(--muted);margin:4px 2px 6px">${c.name}共 ${c.places.length} 个收藏 · 点地点开 Google Maps。地点备注请在「行程」填写，这里只读显示。</div>
+  <div class="foldrow"><button class="foldall" id="mapfold">${folded?`展开全部 ${c.places.length} 个`:'收起地点列表'}</button></div>
+  ${shown.map(placeCardHTML).join('')}
+  ${folded&&c.places.length>1?`<div class="empty" style="padding:10px">… 还有 ${c.places.length-1} 个已折叠</div>`:''}
   <div class="thoughts"><div class="nlbl">📝 关于${c.name}的想法 / 备忘</div><textarea class="ta" data-thought="${city}" placeholder="整体感受、待办、下次想去的…">${esc(getThought(city))}</textarea><div class="saved" data-tsv="${city}"></div></div>`;
 }
 function renderSpend(){
@@ -414,6 +420,7 @@ view.addEventListener('click',e=>{
   const sw=e.target.closest('.cs');if(sw){state.city=sw.dataset.city;state.sub=null;render();return}
   const go=e.target.closest('[data-go]');if(go){const[v,a]=go.dataset.go.split(':');if(v==='itin'){state.tab='itinerary';state.sub=a;render();return}if(v==='mapc'){state.tab='map';state.sub=a;render();return}}
   if(e.target.closest('[data-back]')){state.sub=null;render();return}
+  const mf=e.target.closest('#mapfold');if(mf){LS.set('mapfold:'+state.sub,!LS.get('mapfold:'+state.sub,false));render();return}
   const fh=e.target.closest('[data-fold]');if(fh){const d=fh.dataset.fold;const F=folded();const i=F.indexOf(d);if(i>=0)F.splice(i,1);else F.push(d);LS.set('spendfold:'+cid(),F);render();return}
   const del=e.target.closest('[data-del]');if(del){setSpend(getSpend().filter(x=>x.id!==del.dataset.del));render();return}
 });
