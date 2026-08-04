@@ -339,7 +339,7 @@ function render(){
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.tab));
   if(state.tab==='overview')view.innerHTML=renderOverview();
   else if(state.tab==='itinerary')view.innerHTML=state.sub?renderItinDay():renderItinList();
-  else if(state.tab==='map')view.innerHTML=state.sub?renderMapCity():renderMapCities();
+  else if(state.tab==='map'){state.sub=cid();view.innerHTML=renderMapCity(true)}
   else if(state.tab==='list')view.innerHTML=renderList();
   else if(state.tab==='spend'){view.innerHTML=renderSpend();wireSpend()}
   window.scrollTo({top:0});
@@ -397,12 +397,12 @@ function renderMapCities(){
   Object.entries(CITIES).map(([k,c])=>`<div class="cmcard" data-go="mapc:${k}"><div class="cmtop" style="background:${c.placeholder?'linear-gradient(135deg,#e0d8c8,#efe9da)':`url('${c.photo}') center/cover`}"></div><div class="cmin"><h3>${c.emoji} ${c.name}地图</h3><div class="cmsm">${c.placeholder?'待规划，点进可开始添加':'共 '+c.places.length+' 个收藏地点 · 点查看地图与备注'}</div></div></div>`).join('');
 }
 function placeCardHTML(p){const n=getNote(p.id);return `<div class="pl"><div class="pn">${TYPE[p.type]?.e||''} ${p.name} ${tagsH(p)}</div><div class="pmeta">${p.note||''}${p.hours?' · '+p.hours:''}${p.price?' · '+p.price:''}</div>${n?`<div class="pnote">📝 ${esc(n)}</div>`:''}<div style="margin-top:10px"><a class="btn-gmap" href="${gmapUrl(p)}" target="_blank" rel="noopener">📍 Google Maps</a></div></div>`}
-function renderMapCity(){
+function renderMapCity(direct=false){
   const c=CITIES[state.sub],city=state.sub;
-  if(c.placeholder)return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name}地图</div></div><div class="empty">${c.name} 待规划，暂无收藏地点</div>`;
+  if(c.placeholder)return `${direct?tripHome():`<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name}地图</div></div>`}<div class="empty">${c.name} 待规划，暂无收藏地点</div>`;
   const folded=LS.get('mapfold:'+city,false);
   const shown=folded?c.places.slice(0,1):c.places;
-  return `<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name} · 收藏地点</div></div>
+  return `${direct?tripHome():`<div class="subbar"><button class="back" data-back="1">‹</button><div class="stitle">${c.emoji} ${c.name} · 收藏地点</div></div>`}
   <div class="mapslot" id="cmap"></div>
   <div style="font-size:12.5px;color:var(--muted);margin:4px 2px 6px">${c.name}共 ${c.places.length} 个收藏 · 点地点开 Google Maps。地点备注请在「行程」填写，这里只读显示。</div>
   <div class="foldrow"><button class="foldall" id="mapfold">${folded?`展开全部 ${c.places.length} 个`:'收起地点列表'}</button></div>
